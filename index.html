@@ -12,9 +12,11 @@
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<script crossorigin src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script type="text/plain" id="app-source">
 const { useState, useEffect, useMemo, useCallback } = React;
+const { createClient } = window.supabase;
 
 /* ------------------------------------------------------------------ */
 /* Ikon inline (pengganti lucide-react agar tidak butuh npm)           */
@@ -62,7 +64,17 @@ const Trash2 = (p) => <Icon {...p} path={<>
 const ChevronLeft = (p) => <Icon {...p} path={<polyline points="15 18 9 12 15 6"/>}/>;
 const ChevronRight = (p) => <Icon {...p} path={<polyline points="9 18 15 12 9 6"/>}/>;
 const Check = (p) => <Icon {...p} path={<polyline points="20 6 9 17 4 12"/>}/>;
+const LogOut = (p) => <Icon {...p} path={<>
+  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+</>}/>;
 
+/* ------------------------------------------------------------------ */
+/* Supabase                                                             */
+/* ------------------------------------------------------------------ */
+// Ganti dua nilai ini dengan milikmu sendiri: Supabase Dashboard -> Project Settings -> API
+const SUPABASE_URL = 'https://GANTI-DENGAN-PROJECT-ID.supabase.co';
+const SUPABASE_ANON_KEY = 'GANTI-DENGAN-ANON-PUBLIC-KEY';
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ------------------------------------------------------------------ */
 /* Konstanta & util                                                    */
@@ -760,89 +772,13 @@ function SettingsView({ settings, setSettings, onReset }){
 /* App utama                                                           */
 /* ------------------------------------------------------------------ */
 
-function App(){
-  const [loading, setLoading] = useState(true);
-  const [entries, setEntries] = useState([]);
-  const [reviews, setReviews] = useState({});
-  const [settings, setSettingsState] = useState({ colors: DEFAULT_COLORS, reminderTime: '' });
-  const [tab, setTab] = useState('today');
-  const [draftDate, setDraftDate] = useState(todayISO());
-  const [reminderDismissed, setReminderDismissed] = useState(false);
+/* ------------------------------------------------------------------ */
+/* Autentikasi                                                         */
+/* ------------------------------------------------------------------ */
 
-  useEffect(() => {
-    try {
-      const e = localStorage.getItem('rasa-entries');
-      if (e) setEntries(JSON.parse(e));
-    } catch (err) { /* belum ada data */ }
-    try {
-      const r = localStorage.getItem('rasa-reviews');
-      if (r) setReviews(JSON.parse(r));
-    } catch (err) { /* belum ada data */ }
-    try {
-      const s = localStorage.getItem('rasa-settings');
-      if (s) setSettingsState(JSON.parse(s));
-    } catch (err) { /* belum ada data */ }
-    setLoading(false);
-  }, []);
-
-  const persistEntries = useCallback((next) => {
-    setEntries(next);
-    try { localStorage.setItem('rasa-entries', JSON.stringify(next)); } catch (err) { /* gagal simpan */ }
-  }, []);
-
-  const saveEntry = useCallback((entry) => {
-    const next = [...entries.filter(e => e.date !== entry.date), entry];
-    persistEntries(next);
-  }, [entries, persistEntries]);
-
-  const deleteEntry = useCallback((id) => {
-    persistEntries(entries.filter(e => e.id !== id));
-  }, [entries, persistEntries]);
-
-  const saveReview = useCallback((key, text) => {
-    const next = { ...reviews, [key]: text };
-    setReviews(next);
-    try { localStorage.setItem('rasa-reviews', JSON.stringify(next)); } catch (err) { /* gagal simpan */ }
-  }, [reviews]);
-
-  const setSettings = useCallback((next) => {
-    setSettingsState(next);
-    try { localStorage.setItem('rasa-settings', JSON.stringify(next)); } catch (err) { /* gagal simpan */ }
-  }, []);
-
-  const resetAll = useCallback(() => {
-    if (!window.confirm('Yakin ingin menghapus semua catatan dan pengaturan? Tindakan ini tidak bisa dibatalkan.')) return;
-    persistEntries([]);
-    setReviews({});
-    try { localStorage.setItem('rasa-reviews', JSON.stringify({})); } catch (err) {}
-    setSettings({ colors: DEFAULT_COLORS, reminderTime: '' });
-  }, [persistEntries, setSettings]);
-
-  const allTags = useMemo(() => {
-    const s = new Set();
-    entries.forEach(e => (e.tags||[]).forEach(t => s.add(t)));
-    return [...s].sort();
-  }, [entries]);
-
-  const goEdit = useCallback((date) => { setDraftDate(date); setTab('today'); }, []);
-
-  const nowTime = new Date();
-  const hasToday = entries.some(e => e.date === todayISO());
-  const showReminder = settings.reminderTime && !hasToday && !reminderDismissed && tab==='today' &&
-    `${pad2(nowTime.getHours())}:${pad2(nowTime.getMinutes())}` >= settings.reminderTime;
-
-  const NAV = [
-    ['today','Hari Ini', BookOpen],
-    ['history','Riwayat', CalendarDays],
-    ['eval','Evaluasi', Feather],
-    ['stats','Statistik', BarChart2],
-    ['appreciation','Apresiasi', Heart],
-    ['settings','Pengaturan', SettingsIcon],
-  ];
-
+function AppStyles(){
   return (
-    <div className="journal-app">
-      <style>{`
+    <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Karla:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
         .journal-app {
@@ -1019,7 +955,213 @@ function App(){
           .appreciation-grid { grid-template-columns: 1fr; }
           .color-grid { grid-template-columns: 1fr; }
         }
-      `}</style>
+
+        .sidebar-user { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--line); display:flex; flex-direction:column; gap:6px; }
+        .sidebar-user > span { font-size: 11.5px; color: var(--ink-soft); padding: 0 12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+        .auth-app { align-items:center; justify-content:center; padding: 20px; }
+        .auth-card { width: 100%; max-width: 380px; background: var(--surface); border:1px solid var(--line); border-radius: var(--radius); padding: 32px 30px; margin: auto; }
+        .auth-card h1 { font-size: 22px; margin-bottom: 18px; }
+        .auth-form { display:flex; flex-direction:column; gap:14px; }
+        .auth-form label { display:flex; flex-direction:column; gap:6px; font-size: 13.5px; color: var(--ink-soft); }
+        .auth-error { color: #A85B48; font-size: 13px; margin: 0; }
+        .auth-info { color: var(--sage); font-size: 13px; margin: 0; }
+    `}</style>
+  );
+}
+
+
+function AuthView(){
+  const [mode, setMode] = useState('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setError(''); setInfo(''); setLoading(true);
+    try {
+      if (mode === 'login') {
+        const { error: err } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (err) throw err;
+      } else {
+        const { error: err } = await supabaseClient.auth.signUp({ email, password });
+        if (err) throw err;
+        setInfo('Akun berhasil dibuat. Cek email kamu untuk verifikasi, lalu masuk.');
+      }
+    } catch (err) {
+      setError(err.message || 'Terjadi kesalahan, coba lagi.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="journal-app auth-app">
+      <AppStyles />
+      <div className="auth-card">
+        <div className="sidebar-brand" style={{ padding: 0, marginBottom: 22 }}>
+          Rasa<span>ruang hening untuk mencatat rasa</span>
+        </div>
+        <h1>{mode === 'login' ? 'Masuk ke jurnalmu' : 'Buat akun baru'}</h1>
+        <form onSubmit={submit} className="auth-form">
+          <label>
+            Email
+            <input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="nama@email.com" className="field-input" />
+          </label>
+          <label>
+            Kata sandi
+            <input type="password" required minLength={6} value={password} onChange={e=>setPassword(e.target.value)} placeholder="minimal 6 karakter" className="field-input" />
+          </label>
+          {error && <p className="auth-error">{error}</p>}
+          {info && <p className="auth-info">{info}</p>}
+          <button className="btn-primary" type="submit" disabled={loading} style={{ justifyContent: 'center' }}>
+            {loading ? 'Memproses…' : (mode === 'login' ? 'Masuk' : 'Daftar')}
+          </button>
+        </form>
+        <button className="btn-ghost" style={{ marginTop: 14 }} onClick={()=>{ setMode(mode==='login'?'signup':'login'); setError(''); setInfo(''); }}>
+          {mode === 'login' ? 'Belum punya akun? Daftar di sini' : 'Sudah punya akun? Masuk'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* App utama                                                           */
+/* ------------------------------------------------------------------ */
+
+function App(){
+  const [session, setSession] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [entries, setEntries] = useState([]);
+  const [reviews, setReviews] = useState({});
+  const [settings, setSettingsState] = useState({ colors: DEFAULT_COLORS, reminderTime: '' });
+  const [tab, setTab] = useState('today');
+  const [draftDate, setDraftDate] = useState(todayISO());
+  const [reminderDismissed, setReminderDismissed] = useState(false);
+
+  useEffect(() => {
+    supabaseClient.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthChecked(true);
+    });
+    const { data: listener } = supabaseClient.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!session) { setLoading(false); return; }
+    (async () => {
+      setLoading(true);
+      const uid = session.user.id;
+
+      const { data: entryRows } = await supabaseClient.from('entries').select('*').eq('user_id', uid).order('date');
+      setEntries((entryRows || []).map(r => ({
+        id: r.id, date: r.date, mood: r.mood, reflection: r.reflection || '',
+        gratitude: r.gratitude || ['', '', ''], activities: r.activities || '', tags: r.tags || [],
+      })));
+
+      const { data: reviewRows } = await supabaseClient.from('reviews').select('*').eq('user_id', uid);
+      const reviewMap = {};
+      (reviewRows || []).forEach(r => { reviewMap[r.period_key] = r.text; });
+      setReviews(reviewMap);
+
+      const { data: settingsRow } = await supabaseClient.from('settings').select('*').eq('user_id', uid).maybeSingle();
+      setSettingsState(settingsRow
+        ? { colors: settingsRow.colors || DEFAULT_COLORS, reminderTime: settingsRow.reminder_time || '' }
+        : { colors: DEFAULT_COLORS, reminderTime: '' });
+
+      setLoading(false);
+    })();
+  }, [session]);
+
+  const saveEntry = useCallback(async (entry) => {
+    if (!session) return;
+    const uid = session.user.id;
+    const row = {
+      user_id: uid, date: entry.date, mood: entry.mood, reflection: entry.reflection,
+      gratitude: entry.gratitude, activities: entry.activities, tags: entry.tags,
+    };
+    const { data, error } = await supabaseClient.from('entries').upsert(row, { onConflict: 'user_id,date' }).select().single();
+    if (!error && data) {
+      setEntries(prev => [...prev.filter(e => e.date !== entry.date), {
+        id: data.id, date: data.date, mood: data.mood, reflection: data.reflection || '',
+        gratitude: data.gratitude || ['', '', ''], activities: data.activities || '', tags: data.tags || [],
+      }]);
+    }
+  }, [session]);
+
+  const deleteEntry = useCallback(async (id) => {
+    if (!session) return;
+    await supabaseClient.from('entries').delete().eq('id', id);
+    setEntries(prev => prev.filter(e => e.id !== id));
+  }, [session]);
+
+  const saveReview = useCallback(async (key, text) => {
+    if (!session) return;
+    const uid = session.user.id;
+    await supabaseClient.from('reviews').upsert({ user_id: uid, period_key: key, text }, { onConflict: 'user_id,period_key' });
+    setReviews(prev => ({ ...prev, [key]: text }));
+  }, [session]);
+
+  const setSettings = useCallback(async (next) => {
+    if (!session) return;
+    const uid = session.user.id;
+    await supabaseClient.from('settings').upsert({ user_id: uid, colors: next.colors, reminder_time: next.reminderTime }, { onConflict: 'user_id' });
+    setSettingsState(next);
+  }, [session]);
+
+  const resetAll = useCallback(async () => {
+    if (!session) return;
+    if (!window.confirm('Yakin ingin menghapus semua catatan dan pengaturan? Tindakan ini tidak bisa dibatalkan.')) return;
+    const uid = session.user.id;
+    await supabaseClient.from('entries').delete().eq('user_id', uid);
+    await supabaseClient.from('reviews').delete().eq('user_id', uid);
+    await supabaseClient.from('settings').delete().eq('user_id', uid);
+    setEntries([]); setReviews({}); setSettingsState({ colors: DEFAULT_COLORS, reminderTime: '' });
+  }, [session]);
+
+  const handleLogout = useCallback(async () => { await supabaseClient.auth.signOut(); }, []);
+
+
+  const allTags = useMemo(() => {
+    const s = new Set();
+    entries.forEach(e => (e.tags||[]).forEach(t => s.add(t)));
+    return [...s].sort();
+  }, [entries]);
+
+  const goEdit = useCallback((date) => { setDraftDate(date); setTab('today'); }, []);
+
+  const nowTime = new Date();
+  const hasToday = entries.some(e => e.date === todayISO());
+  const showReminder = settings.reminderTime && !hasToday && !reminderDismissed && tab==='today' &&
+    `${pad2(nowTime.getHours())}:${pad2(nowTime.getMinutes())}` >= settings.reminderTime;
+
+  const NAV = [
+    ['today','Hari Ini', BookOpen],
+    ['history','Riwayat', CalendarDays],
+    ['eval','Evaluasi', Feather],
+    ['stats','Statistik', BarChart2],
+    ['appreciation','Apresiasi', Heart],
+    ['settings','Pengaturan', SettingsIcon],
+  ];
+
+  if (!authChecked) {
+    return <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'sans-serif', color:'#6E6A5C' }}>Memuat…</div>;
+  }
+  if (!session) {
+    return <AuthView />;
+  }
+
+  return (
+    <div className="journal-app">
+      <AppStyles />
 
       <aside className="sidebar">
         <div className="sidebar-brand">
@@ -1031,6 +1173,10 @@ function App(){
             <Icon size={16} /> {label}
           </button>
         ))}
+        <div className="sidebar-user">
+          <span title={session.user.email}>{session.user.email}</span>
+          <button className="nav-btn" onClick={handleLogout}><LogOut size={16}/> Keluar</button>
+        </div>
       </aside>
 
       <main className="main">
